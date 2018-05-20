@@ -782,11 +782,12 @@
 	<string>
 	<vector>
 
-1526748805 source:c:\users\incu\desktop\teza\mymaps-teza\mymaps-teza\main.cpp
+1526839119 source:c:\users\incu\desktop\teza\mymaps-teza\mymaps-teza\main.cpp
 	<SFML/Graphics.hpp>
 	<iostream>
 	<vector>
 	<fstream>
+	<math.h>
 
 1525599722 c:\users\incu\desktop\teza\mymaps-teza\mymaps-teza\sfml\include\sfml\graphics.hpp
 	<SFML/Window.hpp>
