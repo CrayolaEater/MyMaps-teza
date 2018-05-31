@@ -8,11 +8,16 @@ using namespace std;
 fstream fisier;
 fstream distante;
 Event event;
+bool AlegeStart,AlegeUnOrasSpecific,AlegeSosire,AlesStart,AlesOrasSpecific,AlesSosire;
+int DistantaTotala, IndiceStart,IndiceOrasSpecific,IndiceSosire;
 Texture Harta;
 Sprite HartaFundal;
+Text TextAjutator;
 Font FontOrase;
 RenderWindow fereastra;
 class Oras;
+class Buton;
+vector<Buton>Butoane;
 vector<Oras> Orase; //retin toate orasele
 struct structuraOras
 {
@@ -34,6 +39,7 @@ struct Drum
 structuraOras oras;
 vector<structuraOras> OraseCitite;
 vector<Drum> OraseSiDistante;
+vector<Text>TexteNormale;
 class Oras
 {
 private: //ce i privat nu poate fi accesat din afara clasei
@@ -61,10 +67,15 @@ private: //ce i privat nu poate fi accesat din afara clasei
     Vector2i CentruMarcaj,InDreptulMarcajului;
 public:
     Text NumeText;
+    int indiceOras;
     void SeteazaPozaMarcaj(string cale)
     {
         TexturaMarcaj.loadFromFile(cale);
         MarcajOras.setTexture(&TexturaMarcaj);
+    }
+    void SeteazaCuloare(Color culoare)
+    {
+        MarcajOras.setFillColor(culoare);
     }
     void DeseneazaOras()
     {
@@ -90,11 +101,59 @@ public:
         CreeazaTextul();
     }
 };
+class Buton
+{
+private:
+    int pos_x, pos_y;
+    void (*Functie)(void);
+    RectangleShape forma;
+    Texture textura;
+    string caleImagine;
+public:
+    void Click()
+    {
+        Functie();
+    }
+    bool MousePeste()
+    {
+        if(forma.getGlobalBounds().contains(fereastra.mapPixelToCoords(Mouse::getPosition(fereastra))))
+        {
+            Color c(133,133,133);
+            forma.setFillColor(c);
+            return true;
+        }
+        forma.setFillColor(Color::White);
+        return false;
+    }
+    void Deseneaza()
+    {
+        fereastra.draw(forma);
+    }
+    void SeteazaForma()
+    {
+        textura.loadFromFile(caleImagine);
+        forma.setTexture(&textura);
+    }
+    Buton(int p_x,int p_y,int lg, int l,string cale,void(*functie)(void))
+    {
+        forma.setPosition(p_x,p_y);
+        pos_x=p_x;
+        pos_y=p_y;
+        caleImagine=cale;
+        Functie=functie;
+        forma.setSize(Vector2f(lg,l));
+    }
+};
 Oras CreeazaOras(int poz_x,int poz_y,string nume,string poza,int ffactor,int dim_text)
 {
     Oras C(poz_x,poz_y,nume,poza,ffactor,dim_text);
     Orase.push_back(C);
     return C;
+}
+Buton CreeazaButon(int px,int py,int lg, int l,string cale,void(*functie)(void))
+{
+    Buton B(px,py,lg,l,cale,functie);
+    Butoane.push_back(B);
 }
 void DeseneazaOrase()
 {
@@ -104,7 +163,35 @@ void DeseneazaOrase()
         if(Orase[i].MousePeste())
         {
             fereastra.draw(Orase[i].NumeText);
+            if(Mouse::isButtonPressed(Mouse::Left))
+            {
+                if(AlegeStart&&!AlesStart)
+                {
+                    IndiceStart=Orase[i].indiceOras;
+                    Orase[i].SeteazaCuloare(Color::Green);
+                    AlesStart=true;
+                }
+                if(AlegeUnOrasSpecific&&!AlesOrasSpecific)
+                {
+                    IndiceOrasSpecific=Orase[i].indiceOras;
+                    Orase[i].SeteazaCuloare(Color::Yellow);
+                    AlesOrasSpecific=true;
+                }
+                if(AlegeSosire&&!AlesSosire)
+                {
+                    IndiceSosire=Orase[i].indiceOras;
+                    Orase[i].SeteazaCuloare(Color::Blue);
+                    AlesSosire=true;
+                }
+            }
         }
+    }
+}
+void DeseneazaButoane()
+{
+    for(int i=0; i<Butoane.size();i++)
+    {
+        Butoane[i].Deseneaza();
     }
 }
 void CreeazaLinie(Vector2f pos1, Vector2f pos2)
@@ -143,6 +230,7 @@ void CitesteOraseleDinFisier()
     int x,y,factor,dim_text;
     string nume;
     fisier.open("orase.in",ios::in);
+    int ind=0;
     while(fisier>>x>>y>>nume>>factor>>dim_text)
     {
         structuraOras strorasel;
@@ -153,6 +241,8 @@ void CitesteOraseleDinFisier()
         strorasel.dim_text=dim_text;
         OraseCitite.push_back(strorasel);
         Oras orasel=CreeazaOras(x,y,nume,"poze/PunctOrasMarcat.png",factor,dim_text);
+        Orase[Orase.size()-1].indiceOras=ind;
+        ind++;
     }
     fisier.close();
     fisier.clear();
@@ -172,6 +262,36 @@ void CitesteDistantele()
         cout<<d.oras1<<" "<<d.oras2<<" "<<d.distanta<<endl;
     }
 }
+void VerificaButoanele()
+{
+    for(int i=0;i<Butoane.size();i++)
+    {
+        if(Butoane[i].MousePeste())
+        {
+            if(Mouse::isButtonPressed(Mouse::Left))
+            {
+                Butoane[i].Click();
+            }
+        }
+    }
+}
+void DeseneazaTexteleNormale()
+{
+    for(int i=0;i<TexteNormale.size();i++)
+    {
+        fereastra.draw(TexteNormale[i]);
+    }
+}
+void TextNormal(int pos_x, int pos_y, int dim, Color culoare,string text)
+{
+    Text t;
+    t.setCharacterSize(dim);
+    t.setString(text);
+    t.setFillColor(culoare);
+    t.setPosition(pos_x,pos_y);
+    t.setFont(FontOrase);
+    TexteNormale.push_back(t);
+}
 void AfiseazaOraseleInFisier()
 {
     fisier.open("orase.in",ios::out);
@@ -181,21 +301,51 @@ void AfiseazaOraseleInFisier()
     }
     fisier.close();
 }
-int main()
+void SeteazaTexturile()
 {
-    FontOrase.loadFromFile("good times rg.ttf");
-    //Oras Iasi=CreeazaOras(738,160,"iasi",19,"poze/PunctOrasMarcat.png",-15,18);
-    Harta.loadFromFile("poze/ImagineFundalHarta.png"); // incarcam textura hartii din fisier
-    HartaFundal.setTexture(Harta);//setam textura sprite-ului
-    fereastra.create(VideoMode(1000, 800), "MyMaps");
-    CitesteOraseleDinFisier();
-    CitesteDistantele();
     for(int i=0; i<Orase.size(); i++)
     {
         Orase[i].SeteazaPozaMarcaj("poze/PunctOrasMarcat.png");
     }
+    for(int i=0; i<Butoane.size();i++)
+    {
+        Butoane[i].SeteazaForma();
+    }
+}
+void Start()
+{
+    AlegeStart=true;
+    TextAjutator.setString("Alege un Oras de pornire");
+}
+void AlegeOras()
+{
+    AlegeUnOrasSpecific=true;
+    TextAjutator.setString("Alege un Oras de parcurs");
+}
+void Sosire()
+{
+    AlegeSosire=true;
+    TextAjutator.setString("Alege un Oras de sosire");
+}
+int main()
+{
+    FontOrase.loadFromFile("good times rg.ttf");
+    //Oras Iasi=CreeazaOras(738,160,"iasi",19,"poze/PunctOrasMarcat.png",-15,18);
+    TextAjutator.setCharacterSize(30);
+    TextAjutator.setFont(FontOrase);
+    TextAjutator.setPosition(50,730);
+    Harta.loadFromFile("poze/ImagineFundalHarta.png"); // incarcam textura hartii din fisier
+    HartaFundal.setTexture(Harta);//setam textura sprite-ului
+    fereastra.create(VideoMode(1100, 800), "MyMaps");
+    Buton Startul=CreeazaButon(900,100,150,60,"poze/butoane/start.png",Start);
+    Buton AlegeOrasul=CreeazaButon(900,180,150,60,"poze/butoane/Oras.png",AlegeOras);
+    Buton Sosirea=CreeazaButon(900,260,150,60,"poze/butoane/sosire.png",Sosire);
+    CitesteOraseleDinFisier();
+    CitesteDistantele();
+    SeteazaTexturile();
     while (fereastra.isOpen())
     {
+        //cout<<"Din "<<OraseCitite[IndiceStart].nume<<" tre sa treaca prin "<<OraseCitite[IndiceOrasSpecific].nume<<" si sa ajunga in "<<OraseCitite[IndiceSosire].nume<<endl;
         //cout<<Mouse::getPosition(fereastra).x<<" "<<Mouse::getPosition(fereastra).y<<endl;
         while (fereastra.pollEvent(event))
         {
@@ -206,8 +356,11 @@ int main()
         }
         fereastra.clear();
         fereastra.draw(HartaFundal);//desenam sprite-ul (ca sa il vedem)
-        DeseneazaOrase();
+        fereastra.draw(TextAjutator);
         DeseneazaLinii();
+        DeseneazaOrase();
+        DeseneazaButoane();
+        VerificaButoanele();
         fereastra.display();
     }
     AfiseazaOraseleInFisier();

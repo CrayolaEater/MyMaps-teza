@@ -48,6 +48,7 @@
 		<Linker>
 			<Add directory="C:/Users/Incu/Desktop/MyMaps-teza/sfml/lib" />
 		</Linker>
+		<Unit filename="distante.in" />
 		<Unit filename="main.cpp" />
 		<Unit filename="orase.in" />
 		<Extensions>
