@@ -6,10 +6,12 @@
 using namespace sf;
 using namespace std;
 fstream fisier;
+#define infinit 99999
+#define NMAX 105
 fstream distante;
 Event event;
-bool AlegeStart,AlegeUnOrasSpecific,AlegeSosire,AlesStart,AlesOrasSpecific,AlesSosire;
-int DistantaTotala, IndiceStart,IndiceOrasSpecific,IndiceSosire;
+bool AlegeStart,AlegeUnOrasSpecific,AlegeSosire,AlesStart,AlesOrasSpecific,AlesSosire,viz[NMAX],Calculat;
+int DistantaTotala, IndiceStart,IndiceOrasSpecific,IndiceSosire,MatriceCosturi[NMAX][NMAX],d[NMAX],tata[NMAX];
 Texture Harta;
 Sprite HartaFundal;
 Text TextAjutator;
@@ -19,6 +21,7 @@ class Oras;
 class Buton;
 vector<Buton>Butoane;
 vector<Oras> Orase; //retin toate orasele
+vector<Vector2f>PozitiiDeDesenatDrum;
 struct structuraOras
 {
     int x,y,factor,dim_text;
@@ -40,6 +43,20 @@ structuraOras oras;
 vector<structuraOras> OraseCitite;
 vector<Drum> OraseSiDistante;
 vector<Text>TexteNormale;
+void SeteazaCosturilePeInfinit()
+{
+    for(int i =0; i<NMAX;i++)
+    {
+        tata[i]=-2;
+        for(int j=0;j<NMAX;j++)
+        {
+            if(i!=j)
+            {
+                MatriceCosturi[i][j]=infinit;
+            }
+        }
+    }
+}
 class Oras
 {
 private: //ce i privat nu poate fi accesat din afara clasei
@@ -155,6 +172,8 @@ Buton CreeazaButon(int px,int py,int lg, int l,string cale,void(*functie)(void))
     Buton B(px,py,lg,l,cale,functie);
     Butoane.push_back(B);
 }
+void Dijkstra(int indiceOrasStart);
+void DeseneazaDrumurile();
 void DeseneazaOrase()
 {
     for(int i=0; i<Orase.size(); i++)
@@ -182,6 +201,11 @@ void DeseneazaOrase()
                     IndiceSosire=Orase[i].indiceOras;
                     Orase[i].SeteazaCuloare(Color::Blue);
                     AlesSosire=true;
+                    if(!Calculat)
+                    {
+                        Dijkstra(IndiceStart);
+                        DeseneazaDrumurile();
+                    }
                 }
             }
         }
@@ -246,21 +270,6 @@ void CitesteOraseleDinFisier()
     }
     fisier.close();
     fisier.clear();
-}
-void CitesteDistantele()
-{
-    Drum d;
-    distante.open("distante.in",ios::in);
-    while(distante>>d.oras1>>d.oras2>>d.distanta)
-    {
-        OraseSiDistante.push_back(d);
-    }
-    distante.close();
-    distante.clear();
-    for(int i=0; i<OraseSiDistante.size(); i++)
-    {
-        cout<<d.oras1<<" "<<d.oras2<<" "<<d.distanta<<endl;
-    }
 }
 void VerificaButoanele()
 {
@@ -327,8 +336,92 @@ void Sosire()
     AlegeSosire=true;
     TextAjutator.setString("Alege un Oras de sosire");
 }
+int IndexOras(string oras)
+{
+    for(int i=0; i<OraseCitite.size();i++)
+    {
+        if(OraseCitite[i].nume==oras)
+        {
+            return i;
+        }
+    }
+}
+void CitesteDistantele()
+{
+    Drum d;
+    distante.open("distante.in",ios::in);
+    while(distante>>d.oras1>>d.oras2>>d.distanta)
+    {
+        MatriceCosturi[IndexOras(d.oras1)][IndexOras(d.oras2)]=MatriceCosturi[IndexOras(d.oras2)][IndexOras(d.oras1)]=d.distanta;
+        OraseSiDistante.push_back(d);
+    }
+    distante.close();
+    distante.clear();
+}
+void Dijkstra(int indiceOrasStart)
+{
+    for(int i=0;i<OraseCitite.size();i++)
+    {
+        d[i]=MatriceCosturi[indiceOrasStart][i];
+        tata[i]=indiceOrasStart;
+        viz[i]=0;
+    }
+    viz[indiceOrasStart]=1;
+    tata[indiceOrasStart]=-1;
+    bool ok=1;
+    while(ok)
+    {
+        int minim=infinit;
+        int k =0;
+        for(int i =0; i<OraseCitite.size();i++)
+        {
+            if(!viz[i]&&d[i]<minim)
+            {
+                minim=d[i];
+                k=i;
+            }
+        }
+        if(minim!=infinit)
+        {
+            viz[k]=1;
+            for(int i =0; i<OraseCitite.size();i++)
+            {
+                if(!viz[i]&&d[k]+MatriceCosturi[k][i]<d[i])
+                {
+                    d[i]=d[k]+MatriceCosturi[k][i];
+                    tata[i]=k;
+                    cout<<OraseCitite[k].nume<<"->"<<OraseCitite[i].nume<<endl;
+                }
+            }
+        }
+        else
+        {
+            ok=0;
+        }
+    }
+}
+void DeseneazaDrumurile()
+{
+    while(tata[IndiceSosire]!=-1)
+    {
+        Vector2f c;
+        c.x=OraseCitite[IndiceSosire].x;
+        c.y=OraseCitite[IndiceSosire].y;
+        PozitiiDeDesenatDrum.push_back(c);
+        IndiceSosire=tata[IndiceSosire];
+    }
+    Vector2f c;
+    c.x=OraseCitite[IndiceStart].x;
+    c.y=OraseCitite[IndiceStart].y;
+    PozitiiDeDesenatDrum.push_back(c);
+    for(int i =0; i<PozitiiDeDesenatDrum.size()-1;i++)
+    {
+        CreeazaLinie(PozitiiDeDesenatDrum[i],PozitiiDeDesenatDrum[i+1]);
+    }
+}
 int main()
 {
+    SeteazaCosturilePeInfinit();
     FontOrase.loadFromFile("good times rg.ttf");
     //Oras Iasi=CreeazaOras(738,160,"iasi",19,"poze/PunctOrasMarcat.png",-15,18);
     TextAjutator.setCharacterSize(30);
@@ -342,6 +435,23 @@ int main()
     Buton Sosirea=CreeazaButon(900,260,150,60,"poze/butoane/sosire.png",Sosire);
     CitesteOraseleDinFisier();
     CitesteDistantele();
+    /*
+    Dijkstra(IndexOras("iasi"));
+    int x=0;
+    for(int i =0; i<OraseCitite.size();i++)
+    {
+        if(d[i]!=infinit)
+        {
+            //cout<<"distanta de la iasi pana la "<<OraseCitite[i].nume<<" este de "<<d[i]<<endl;
+        }
+    }
+    cout<<endl;
+    x=IndexOras("bistrita");
+    while(tata[x]!=-1)
+    {
+        cout<<OraseCitite[x].nume<<"<-";
+        x=tata[x];
+    }*/
     SeteazaTexturile();
     while (fereastra.isOpen())
     {
