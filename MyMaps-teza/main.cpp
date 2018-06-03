@@ -6,12 +6,12 @@
 using namespace sf;
 using namespace std;
 fstream fisier;
-#define infinit 99999
+#define infinit 9999999
 #define NMAX 105
 fstream distante;
 Event event;
 bool AlegeStart,AlegeUnOrasSpecific,AlegeSosire,AlesStart,AlesOrasSpecific,AlesSosire,viz[NMAX],Calculat;
-int DistantaTotala, IndiceStart,IndiceOrasSpecific,IndiceSosire,MatriceCosturi[NMAX][NMAX],d[NMAX],tata[NMAX];
+int IndiceStart,IndiceOrasSpecific,IndiceSosire,IndiceStart2,IndiceStart3,IndiceSosire2,IndiceSosire3,MatriceCosturi[NMAX][NMAX],d[NMAX],tata[NMAX],DistantaTotala;
 Texture Harta;
 Sprite HartaFundal;
 Text TextAjutator;
@@ -22,6 +22,7 @@ class Buton;
 vector<Buton>Butoane;
 vector<Oras> Orase; //retin toate orasele
 vector<Vector2f>PozitiiDeDesenatDrum;
+vector<int>OraseParcurse;
 struct structuraOras
 {
     int x,y,factor,dim_text;
@@ -45,10 +46,10 @@ vector<Drum> OraseSiDistante;
 vector<Text>TexteNormale;
 void SeteazaCosturilePeInfinit()
 {
-    for(int i =0; i<NMAX;i++)
+    for(int i =0; i<NMAX; i++)
     {
         tata[i]=-2;
-        for(int j=0;j<NMAX;j++)
+        for(int j=0; j<NMAX; j++)
         {
             if(i!=j)
             {
@@ -81,10 +82,12 @@ private: //ce i privat nu poate fi accesat din afara clasei
     int pos_x, pos_y,factor;
     RectangleShape MarcajOras;
     Texture TexturaMarcaj;
-    Vector2i CentruMarcaj,InDreptulMarcajului;
+    Vector2i InDreptulMarcajului;
 public:
+    bool ArataOras;
     Text NumeText;
     int indiceOras;
+    Vector2f CentruMarcaj;
     void SeteazaPozaMarcaj(string cale)
     {
         TexturaMarcaj.loadFromFile(cale);
@@ -174,23 +177,77 @@ Buton CreeazaButon(int px,int py,int lg, int l,string cale,void(*functie)(void))
 }
 void Dijkstra(int indiceOrasStart);
 void DeseneazaDrumurile();
+bool OrasulEsteParcurs(int indiceOras)
+{
+    for(int i=0; i<OraseParcurse.size(); i++)
+    {
+        if(OraseParcurse[i]==indiceOras)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+string IntToString(int nr);
+void FaDrumulMinim()
+{
+    if(!Calculat)
+    {
+        if(!AlesOrasSpecific)
+        {
+            Dijkstra(IndiceStart);
+            DeseneazaDrumurile();
+            DistantaTotala=d[IndiceSosire2];
+            string c="Distanta "+OraseCitite[IndiceStart].nume+"->"+OraseCitite[IndiceSosire2].nume+": "+IntToString(DistantaTotala)+" Km";
+            TextAjutator.setString(c);
+        }
+        else
+        {
+            IndiceSosire=IndiceOrasSpecific;
+            Dijkstra(IndiceStart);
+            DistantaTotala=d[IndiceOrasSpecific];
+            DeseneazaDrumurile();
+            PozitiiDeDesenatDrum.erase(PozitiiDeDesenatDrum.begin(),PozitiiDeDesenatDrum.end());
+            IndiceSosire=IndiceSosire2;
+            IndiceStart=IndiceOrasSpecific;
+            Dijkstra(IndiceStart);
+            DistantaTotala+=d[IndiceSosire2];
+            DeseneazaDrumurile();
+            string c="Distanta "+OraseCitite[IndiceStart2].nume+"->"+OraseCitite[IndiceOrasSpecific].nume+"->"+OraseCitite[IndiceSosire2].nume+": "+IntToString(DistantaTotala)+" Km";
+            TextAjutator.setString(c);
+        }
+        Calculat=true;
+    }
+}
 void DeseneazaOrase()
 {
+    for(int i =0; i<Orase.size(); i++)
+    {
+        if(Orase[i].ArataOras)
+        {
+            fereastra.draw(Orase[i].NumeText);
+        }
+    }
     for(int i=0; i<Orase.size(); i++)
     {
         Orase[i].DeseneazaOras();
         if(Orase[i].MousePeste())
         {
-            fereastra.draw(Orase[i].NumeText);
+            Orase[i].ArataOras=true;
             if(Mouse::isButtonPressed(Mouse::Left))
             {
                 if(AlegeStart&&!AlesStart)
                 {
                     IndiceStart=Orase[i].indiceOras;
+                    IndiceStart3=IndiceStart;
                     Orase[i].SeteazaCuloare(Color::Green);
                     AlesStart=true;
+                    if(AlesSosire)
+                    {
+                        FaDrumulMinim();
+                    }
                 }
-                if(AlegeUnOrasSpecific&&!AlesOrasSpecific)
+                if(AlegeUnOrasSpecific&&!AlesOrasSpecific&&AlesStart)
                 {
                     IndiceOrasSpecific=Orase[i].indiceOras;
                     Orase[i].SeteazaCuloare(Color::Yellow);
@@ -199,21 +256,30 @@ void DeseneazaOrase()
                 if(AlegeSosire&&!AlesSosire)
                 {
                     IndiceSosire=Orase[i].indiceOras;
+                    IndiceSosire2=IndiceSosire;
+                    IndiceSosire3=IndiceSosire2;
                     Orase[i].SeteazaCuloare(Color::Blue);
+                    IndiceStart2=IndiceStart;
                     AlesSosire=true;
-                    if(!Calculat)
+                    if(AlesStart)
                     {
-                        Dijkstra(IndiceStart);
-                        DeseneazaDrumurile();
+                        FaDrumulMinim();
                     }
                 }
+            }
+        }
+        else
+        {
+            if(!OrasulEsteParcurs(i))
+            {
+                Orase[i].ArataOras=false;
             }
         }
     }
 }
 void DeseneazaButoane()
 {
-    for(int i=0; i<Butoane.size();i++)
+    for(int i=0; i<Butoane.size(); i++)
     {
         Butoane[i].Deseneaza();
     }
@@ -273,7 +339,7 @@ void CitesteOraseleDinFisier()
 }
 void VerificaButoanele()
 {
-    for(int i=0;i<Butoane.size();i++)
+    for(int i=0; i<Butoane.size(); i++)
     {
         if(Butoane[i].MousePeste())
         {
@@ -286,7 +352,7 @@ void VerificaButoanele()
 }
 void DeseneazaTexteleNormale()
 {
-    for(int i=0;i<TexteNormale.size();i++)
+    for(int i=0; i<TexteNormale.size(); i++)
     {
         fereastra.draw(TexteNormale[i]);
     }
@@ -316,7 +382,7 @@ void SeteazaTexturile()
     {
         Orase[i].SeteazaPozaMarcaj("poze/PunctOrasMarcat.png");
     }
-    for(int i=0; i<Butoane.size();i++)
+    for(int i=0; i<Butoane.size(); i++)
     {
         Butoane[i].SeteazaForma();
     }
@@ -338,7 +404,7 @@ void Sosire()
 }
 int IndexOras(string oras)
 {
-    for(int i=0; i<OraseCitite.size();i++)
+    for(int i=0; i<OraseCitite.size(); i++)
     {
         if(OraseCitite[i].nume==oras)
         {
@@ -349,18 +415,36 @@ int IndexOras(string oras)
 void CitesteDistantele()
 {
     Drum d;
+    int n=0;
     distante.open("distante.in",ios::in);
     while(distante>>d.oras1>>d.oras2>>d.distanta)
     {
+        //cout<<"Distanta dintre "<<OraseCitite[IndexOras(d.oras1)].nume<<" si "<<OraseCitite[IndexOras(d.oras2)].nume<<" este de:"<<d.distanta<<endl;
         MatriceCosturi[IndexOras(d.oras1)][IndexOras(d.oras2)]=MatriceCosturi[IndexOras(d.oras2)][IndexOras(d.oras1)]=d.distanta;
+        n++;
         OraseSiDistante.push_back(d);
     }
     distante.close();
     distante.clear();
+//    for(int i=0;i<11;i++)
+//    {
+//        for(int g=0; g<11;g++)
+//        {
+//            if(MatriceCosturi[i][g]==infinit)
+//            {
+//                cout<<"i"<<" ";
+//            }
+//            else
+//            {
+//                cout<<MatriceCosturi[i][g]<<" ";
+//            }
+//        }
+//        cout<<endl;
+//    }
 }
 void Dijkstra(int indiceOrasStart)
 {
-    for(int i=0;i<OraseCitite.size();i++)
+    for(int i=0; i<OraseCitite.size(); i++)
     {
         d[i]=MatriceCosturi[indiceOrasStart][i];
         tata[i]=indiceOrasStart;
@@ -373,7 +457,7 @@ void Dijkstra(int indiceOrasStart)
     {
         int minim=infinit;
         int k =0;
-        for(int i =0; i<OraseCitite.size();i++)
+        for(int i =0; i<OraseCitite.size(); i++)
         {
             if(!viz[i]&&d[i]<minim)
             {
@@ -384,13 +468,12 @@ void Dijkstra(int indiceOrasStart)
         if(minim!=infinit)
         {
             viz[k]=1;
-            for(int i =0; i<OraseCitite.size();i++)
+            for(int i =0; i<OraseCitite.size(); i++)
             {
                 if(!viz[i]&&d[k]+MatriceCosturi[k][i]<d[i])
                 {
                     d[i]=d[k]+MatriceCosturi[k][i];
                     tata[i]=k;
-                    cout<<OraseCitite[k].nume<<"->"<<OraseCitite[i].nume<<endl;
                 }
             }
         }
@@ -404,54 +487,78 @@ void DeseneazaDrumurile()
 {
     while(tata[IndiceSosire]!=-1)
     {
-        Vector2f c;
-        c.x=OraseCitite[IndiceSosire].x;
-        c.y=OraseCitite[IndiceSosire].y;
-        PozitiiDeDesenatDrum.push_back(c);
+        PozitiiDeDesenatDrum.push_back(Orase[IndiceSosire].CentruMarcaj);
+        OraseParcurse.push_back(IndiceSosire);
+        //cout<<OraseCitite[IndiceSosire].nume<<"<-";
         IndiceSosire=tata[IndiceSosire];
     }
-    Vector2f c;
-    c.x=OraseCitite[IndiceStart].x;
-    c.y=OraseCitite[IndiceStart].y;
-    PozitiiDeDesenatDrum.push_back(c);
-    for(int i =0; i<PozitiiDeDesenatDrum.size()-1;i++)
+    //cout<<OraseCitite[IndiceStart].nume;
+    //cout<<'\n';
+    OraseParcurse.push_back(IndiceStart);
+    PozitiiDeDesenatDrum.push_back(Orase[IndiceStart].CentruMarcaj);
+//    if(AlesOrasSpecific)
+//    {
+//        PozitiiDeDesenatDrum.push_back(Orase[IndiceStart2].CentruMarcaj);
+//    }
+    for(int i =0; i<PozitiiDeDesenatDrum.size()-1; i++)
     {
         CreeazaLinie(PozitiiDeDesenatDrum[i],PozitiiDeDesenatDrum[i+1]);
     }
+    for(int i=0; i<OraseParcurse.size(); i++)
+    {
+        Orase[OraseParcurse[i]].ArataOras=true;
+    }
+}
+string IntToString(int nr)
+{
+    string c;
+    while(nr)
+    {
+        c+=nr%10+'0';
+        nr/=10;
+    }
+    reverse(c.begin(),c.end());
+    return c;
+}
+int DistantaPanaLaDestinatie(string destinatie)
+{
+    return d[IndexOras(destinatie)];
+}
+void Reset()
+{
+    Linii.erase(Linii.begin(),Linii.end());
+    PozitiiDeDesenatDrum.erase(PozitiiDeDesenatDrum.begin(),PozitiiDeDesenatDrum.end());
+    for(int i =0 ; i<OraseParcurse.size(); i++)
+    {
+        Orase[OraseParcurse[i]].ArataOras=false;
+    }
+    OraseParcurse.erase(OraseParcurse.begin(),OraseParcurse.end());
+    Orase[IndiceStart3].SeteazaCuloare(Color::White);
+    Orase[IndiceOrasSpecific].SeteazaCuloare(Color::White);
+    Orase[IndiceSosire2].SeteazaCuloare(Color::White);
+    IndiceStart=IndiceSosire2=IndiceOrasSpecific=IndiceStart3=-1;
+    Calculat=false;
+    AlesOrasSpecific=AlesSosire=AlesStart=AlegeSosire=AlegeStart=AlegeUnOrasSpecific=false;
+    TextAjutator.setString("");
+    DistantaTotala=0;
 }
 int main()
 {
     SeteazaCosturilePeInfinit();
     FontOrase.loadFromFile("good times rg.ttf");
     //Oras Iasi=CreeazaOras(738,160,"iasi",19,"poze/PunctOrasMarcat.png",-15,18);
-    TextAjutator.setCharacterSize(30);
+    TextAjutator.setCharacterSize(26);
     TextAjutator.setFont(FontOrase);
     TextAjutator.setPosition(50,730);
     Harta.loadFromFile("poze/ImagineFundalHarta.png"); // incarcam textura hartii din fisier
     HartaFundal.setTexture(Harta);//setam textura sprite-ului
     fereastra.create(VideoMode(1100, 800), "MyMaps");
-    Buton Startul=CreeazaButon(900,100,150,60,"poze/butoane/start.png",Start);
-    Buton AlegeOrasul=CreeazaButon(900,180,150,60,"poze/butoane/Oras.png",AlegeOras);
-    Buton Sosirea=CreeazaButon(900,260,150,60,"poze/butoane/sosire.png",Sosire);
+    Buton Startul=CreeazaButon(900,80,150,60,"poze/butoane/start.png",Start);
+    Buton AlegeOrasul=CreeazaButon(900,160,150,60,"poze/butoane/Oras.png",AlegeOras);
+    Buton Sosirea=CreeazaButon(900,240,150,60,"poze/butoane/sosire.png",Sosire);
+    Buton Reseteaza=CreeazaButon(900,320,150,60,"poze/butoane/buton_reset.png",Reset);
     CitesteOraseleDinFisier();
     CitesteDistantele();
-    /*
-    Dijkstra(IndexOras("iasi"));
-    int x=0;
-    for(int i =0; i<OraseCitite.size();i++)
-    {
-        if(d[i]!=infinit)
-        {
-            //cout<<"distanta de la iasi pana la "<<OraseCitite[i].nume<<" este de "<<d[i]<<endl;
-        }
-    }
-    cout<<endl;
-    x=IndexOras("bistrita");
-    while(tata[x]!=-1)
-    {
-        cout<<OraseCitite[x].nume<<"<-";
-        x=tata[x];
-    }*/
     SeteazaTexturile();
     while (fereastra.isOpen())
     {
